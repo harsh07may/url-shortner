@@ -6,7 +6,7 @@ Files Alembic needs (everything else is generated):
 
 | File | Purpose |
 | --- | --- |
-| `alembic.ini` | Points Alembic at the `migrations/` folder. No DB URL here. |
+| `alembic.ini` | Points Alembic at the `migrations/` folder. Its `sqlalchemy.url` placeholder is overridden by `env.py`. |
 | `migrations/env.py` | Connects using `settings.database_url` and diffs against `Base.metadata`. |
 | `migrations/script.py.mako` | Template for new migration files. Don't edit. |
 | `migrations/versions/` | The migrations themselves. |
@@ -14,7 +14,7 @@ Files Alembic needs (everything else is generated):
 ### Setup (already done)
 
 1. `uv add alembic asyncpg "sqlalchemy[asyncio]"`
-2. `uv run alembic init -t async migrations`, then trim `alembic.ini` and `env.py` down to what's committed.
+2. `uv run alembic init -t async migrations`, then edit `migrations/env.py` to use `settings.database_url` and `Base.metadata` (see below).
 3. `.env` has `DATABASE_URL=postgresql+asyncpg://app:app@localhost:5432/shortener`.
 
 ### Everyday workflow
@@ -29,10 +29,6 @@ Files Alembic needs (everything else is generated):
 ### Adding a new model
 
 Import it somewhere `migrations/env.py` already loads, or autogenerate won't see it. The existing `import app.models` covers anything defined in `app/models.py`. If you add another models file, import it in `env.py` too.
-
-### Limitations
-
-`migrations/env.py` only supports online mode, so `alembic upgrade head --sql` (offline SQL output) is not supported. It will connect to the DB and apply the migration for real.
 
 ### Useful commands
 
