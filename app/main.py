@@ -1,9 +1,11 @@
 # app/main.py
 from contextlib import asynccontextmanager
 
+import redis.asyncio as redis
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+from app.core.config import settings
 from app.db import engine
 from app.errors import CodeTaken, LinkNotFound
 from app.routers import links, redirect
@@ -11,7 +13,9 @@ from app.routers import links, redirect
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    app.state.redis = redis.from_url(settings.redis_url, decode_responses=True)
     yield
+    await app.state.redis.aclose()
     await engine.dispose()
 
 
