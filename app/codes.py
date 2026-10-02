@@ -1,9 +1,9 @@
-# app/main.py
-from app.codes import make_code      # absolute import (preferred)
-from . import codes                  # relative import, only inside a package
+# app/codes.py
+import secrets
+import string
 
-def main() -> None:
-    print(make_code())
+ALPHABET = string.ascii_letters + string.digits
 
-if __name__ == "__main__":           # true only when run directly, not on import
-    main()  
+
+def make_code(length: int = 6) -> str:
+    return "".join(secrets.choice(ALPHABET) for _ in range(length))
