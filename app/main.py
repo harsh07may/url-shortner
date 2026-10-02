@@ -1,9 +1,10 @@
 import secrets
 import string
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import RedirectResponse
-from pydantic import BaseModel, HttpUrl
+from fastapi import FastAPI, HTTPException, Path, Request
+from fastapi.responses import JSONResponse, RedirectResponse
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 app = FastAPI(title="URL Shortener")
 
@@ -16,7 +17,28 @@ ALPHABET = string.ascii_letters + string.digits  # characters allowed in a code
 
 store: dict[str, str] = {}   # code -> target URL
 clicks: dict[str, int] = {}  # code -> click count
+RESERVED = {"docs", "redoc", "openapi.json", "links", "health"}
 
+Code = Annotated[str, Path(min_length=4, max_length=16)]
+
+
+
+
+
+# ---------------------------------------------------------------------------
+# Errors
+# ---------------------------------------------------------------------------
+class LinkNotFound(Exception): ...
+class CodeTaken(Exception): ...
+
+@app.exception_handler(LinkNotFound)
+async def on_not_found(request: Request, exc: LinkNotFound) -> JSONResponse:
+    return JSONResponse(status_code=404, content={"detail": f"no link '{exc}'"})
+
+
+@app.exception_handler(CodeTaken)
+async def on_taken(request: Request, exc: CodeTaken) -> JSONResponse:
+    return JSONResponse(status_code=409, content={"detail": f"code '{exc}' is taken"})
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -24,9 +46,22 @@ clicks: dict[str, int] = {}  # code -> click count
 
 class LinkCreate(BaseModel):
     """Request body for creating a short link."""
+    url: HttpUrl              
+    code: str | None = Field(default=None,
+                             min_length=6, max_length=16,
+                             pattern=r"^[A-Za-z0-9_-]+$")
+    @field_validator("code")
+    @classmethod
+    def not_reserved(cls, v: str | None) -> str | None:
+        if v in RESERVED:
+            raise ValueError("this code is reserved")
+        return v
 
-    url: HttpUrl              # destination; validated as a proper http(s) URL
-    code: str | None = None   # optional custom code; generated if omitted
+class LinkOut(BaseModel):
+    code: str
+    short_url: str
+    target_url: str
+    clicks: int = 0
 
 
 # ---------------------------------------------------------------------------
